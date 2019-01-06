@@ -1,0 +1,8 @@
+tensorflow-gpu==1.8
+fire
+tqdm
+h5py
+keras
+numpy
+six
+mmh3
