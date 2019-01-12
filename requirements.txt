@@ -6,3 +6,5 @@ keras
 numpy
 six
 mmh3
+konlpy
+pandas

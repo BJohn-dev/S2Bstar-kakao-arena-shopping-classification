@@ -17,18 +17,21 @@
         "../test.chunk.01",
         "../test.chunk.02"
     ],
-    "unigram_hash_size": 250000,
+    "unigram_hash_size": 200000,
     "min_word_length": 2,
     "max_word_length": 127,
     "max_len": 160,
     "chunk_size": 20000,
     "db_chunk_size": 100000,
-    "num_workers": 75,
-    "num_predict_workers": 75,
+    "num_workers": 20,
+    "num_predict_workers": 20,
     "embd_size": 1254,
+    "img_size": 2048,
     "lr_embd": 7e-5,
     "lr_train": 8e-6,
     "num_epochs_embd": 13,
     "num_epochs_train": 154,
-    "batch_size": 1024
+    "batch_size": 1024,
+    "khaiii_so_path": "/usr/local/lib/libkhaiii.so",
+    "khaiii_path": "/usr/local/share/khaiii"
 }

@@ -1,18 +1,6 @@
-# -*- coding: utf-8 -*-
-# Copyright 2017 Kakao, Recommendation Team
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+# 
+# network.py
+# ==============================================================================
 import tensorflow as tf
 
 import keras
@@ -36,11 +24,11 @@ def customLoss(y_true,y_pred):
     return y_true
 
 
-class TextOnly:
+class MainNet:
     def __init__(self):
-        self.logger = get_logger('textonly')
+        self.logger = get_logger('main_net')
 
-    def get_model(self, num_classes, activation='sigmoid'):
+    def get_model(self, num_classes, activation='softmax'):
 
         with tf.device('/gpu:0'):
             
@@ -49,21 +37,63 @@ class TextOnly:
             output_word = Dense(int(num_classes*2), activation='relu', name="outputs_word")(Dropout(rate=0.4)(embd_word))
             
             ######################################################
-            img_feat = Input((2048,), name="img_feat")
-            outputs_feat = Dense(int(2048), activation='relu', name="outputs_img_feat")(Dropout(rate=0.4)(img_feat))
+            img_feat = Input((opt.img_size,), name="img_feat")
+            outputs_feat = Dense(int(opt.img_size), activation='relu', name="outputs_img_feat")(Dropout(rate=0.4)(img_feat))
             
             ######################################################
             added = Concatenate(axis=-1)([output_word, outputs_feat])
             outputs_sum = Dense(int(num_classes), activation='relu', name="outputs_sum")(Dropout(rate=0.6)(added))
             
             ######################################################
-            activation = 'softmax'
             outputs = Dense(num_classes, activation=activation, name="outputs_dense")(Dropout(rate=0.6)(outputs_sum))
             
             ######################################################
             model = Model(inputs=[embd_word, img_feat], outputs=outputs)
             optm = keras.optimizers.Nadam(opt.lr_train)
             model.compile(loss='categorical_crossentropy',
+                        optimizer=optm,
+                        metrics=[top1_acc])
+            model.summary(print_fn=lambda x: self.logger.info(x))
+        return model
+
+
+class EmbdNet:
+    def __init__(self):
+        self.logger = get_logger('embd_net')
+
+    def get_model(self, num_classes, activation='softmax'):
+        max_len = opt.max_len
+        voca_size = opt.unigram_hash_size + 1
+
+        with tf.device('/gpu:0'):
+            embd = Embedding(voca_size,
+                             opt.embd_size,
+                             name='uni_embd')
+
+            t_uni = Input((max_len,), name="input_1")
+            t_uni_embd = embd(t_uni)  # token
+
+            w_uni = Input((max_len,), name="input_2")
+            w_uni_mat = Reshape((max_len, 1))(w_uni)  # weight
+
+            uni_embd_mat = dot([t_uni_embd, w_uni_mat], axes=1)
+            uni_embd = Reshape((opt.embd_size, ))(uni_embd_mat)
+            embd_out = Dropout(rate=0.5)(uni_embd)
+            
+            ######################################################
+            word = Activation('relu', name='relu1')(embd_out)
+            output_word = Dense(int(num_classes), activation='relu', name="outputs_word")(Dropout(rate=0.4)(word))
+            
+            ######################################################
+            outputs_sum = Dense(int(num_classes*3), activation='relu', name="outputs_sum")(Dropout(rate=0.6)(output_word))
+            
+            ######################################################
+            outputs = Dense(num_classes, activation=activation, name="outputs_dense")(Dropout(rate=0.6)(outputs_sum))
+            
+            ######################################################
+            model = Model(inputs=[t_uni, w_uni], outputs=[outputs, embd_out])
+            optm = keras.optimizers.Nadam(opt.lr_embd)
+            model.compile(loss=['categorical_crossentropy', customLoss],
                         optimizer=optm,
                         metrics=[top1_acc])
             model.summary(print_fn=lambda x: self.logger.info(x))

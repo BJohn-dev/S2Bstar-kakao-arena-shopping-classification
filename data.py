@@ -1,20 +1,5 @@
-# -*- coding: utf-8 -*-
-# Copyright 2017 Kakao, Recommendation Team
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 import os
 os.environ['OMP_NUM_THREADS'] = '1'
-import re
 import sys
 import traceback
 from collections import Counter
@@ -29,72 +14,11 @@ import six
 from keras.utils.np_utils import to_categorical
 from six.moves import cPickle
 
+from utils import change_special, change_abnormal, get_no_hangul, cate_counter, khaiii_api_tokenizer
 from misc import get_logger, Option
 opt = Option('./config.json')
-
-import pickle
+  
     
-re_sc = re.compile('[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
-from functools import partial
-# from nltk.tokenize import TreebankWordTokenizer
-# treebanktokenizer = TreebankWordTokenizer()
-
-def transform(re_sc, product):
-    return re_sc.sub(" ", product).strip()
-transform = partial(transform, re_sc)
-abnormal_list = ['알수 없음', '알수없음', '상세정보참조', '추가비용', '추가 비용'
-                 '[상품상세설명 참조]', '상세페이지참조', '상세페이지 참조', '별도표기', '상세참조',
-                 '영업상문제로공개불가', '？？', '？？？？？？？？？', '-9', 
-                 '해당없음', '상세설명참조', '알수', '없음', '상품상세정보', 
-                 '참조', '상품상세설명', '브랜드', '무료배송', '참고', '설명','정보'] + \
-                 "상품 상세 페이지에 제공 기타".strip().split()
-
-abnormal_list = ['알수 없음', '알수없음'] + \
-                ['상세정보참조', '[상품상세설명 참조]', '상세페이지참조', '상세페이지 참조', '상세설명참조', '상세참조', '상품상세정보' ] + \
-                ['상품상세설명'] + \
-                ['추가비용', '추가 비용'] + \
-                ['영업상문제로공개불가', '？？', '？？？？？？？？？', '-9'] + \
-                ['별도표기', '해당없음', '알수', '없음'] + \
-                "상품 상세 페이지에 제공 기타 무료 배송 참고 설명 정보 참조".strip().split()
-
-def change_abnormal(abnormal_list, string):
-    for abnormal in abnormal_list:
-        string = string.replace(abnormal, " ")
-    return string
-change_abnormal = partial(change_abnormal, abnormal_list)
-
-def get_spaced_sentence(splited_sentence):
-    return " ".join([w.strip() for w in splited_sentence if len(w) > 2])
-
-hangul = re.compile('[^ ㄱ-ㅣ가-힣]+')
-
-def get_hangul(s):
-    return hangul.sub('', s)
-    
-def get_no_hangul(s):
-    return [i.lower() for i in hangul.findall(s) if len(i) > 2]
-
-
-cate_names_path = "data/final_cate_names.pickle"
-f = open(cate_names_path, "rb")
-cate_names = pickle.load(f)
-f.close()
-def cate_counter(sent):
-    return {cate_word: sent.count(cate_word)+2 for cate_word in cate_names if sent.count(cate_word) > 0}
-
-def khaiii_api_tokenizer(khaiii_api, string):
-    try:
-        words = []
-        for word in khaiii_api.analyze(string):
-            for m in word.morphs:
-                if m.tag in ["NNG", "NNP", "NNB"]:
-                    words.append(m.lex)
-        return words
-    except:
-        print("khaiii_api_tokenizer error")
-        return []
-
-
 class Reader(object):
     def __init__(self, data_path_list, div, begin_offset, end_offset):
         self.div = div
@@ -168,24 +92,15 @@ class Reader(object):
 
 def preprocessing(data):
     try:
-        # import jpype
-        # jpype.attachThreadToJVM()
         from konlpy.tag import Okt, Kkma
-        # from konlpy.utils import pprint
-        #######################################################################################
-        # from twkorean import TwitterKoreanProcessor
-        # processor = TwitterKoreanProcessor()
-        # processor = TwitterKoreanProcessor(normalization=False, stemming=False)
-        # tokenizer = processor.tokenize
-        #######################################################################################
         import khaiii
-        khaiii_api = khaiii.KhaiiiApi('/usr/local/lib/libkhaiii.so')
-        khaiii_api.open("/usr/local/share/khaiii")
+        khaiii_api = khaiii.KhaiiiApi(opt.khaiii_so_path)
+        khaiii_api.open(opt.khaiii_path)
 
-        twitter = Okt()
         kkma = Kkma()
-        okt_tokenizer = twitter.nouns
         kkma_tokenizer = kkma.nouns
+        twitter = Okt()
+        okt_tokenizer = twitter.nouns
 
         cls, data_path_list, div, out_path, begin_offset, end_offset = data
         data = cls()
@@ -193,7 +108,6 @@ def preprocessing(data):
         data.preprocessing(data_path_list, div, begin_offset, end_offset, out_path, okt_tokenizer, khaiii_api, kkma_tokenizer)
     except Exception:
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
-
 
 
 def build_y_vocab(data):
@@ -292,50 +206,32 @@ class Data:
         brand = h['brand'][i].decode()
         maker = h['maker'][i].decode()
         model = h['model'][i].decode()
-        price = int(h['price'][i])
-        updttm = int(h['updttm'][i])
-        # price = get_price_vec(price)
+     
+        sent = " ".join([product, brand, maker, model])
         
-        # print(type(product), type(brand), type(maker), type(model))
-        words = " ".join([product, brand, maker, model])
+        _sent = change_abnormal(sent)
+        _sent = change_special(_sent).strip()
         
-        key_freq_dict = cate_counter(words)
-        
-        words = change_abnormal(words)
-        words = transform(words).strip()
-        
-        words_no_hangul = get_no_hangul(words)
-        
-        kor_tokens = okt_tokenizer(words)
-        kkma_tokens = kkma_tokenizer(words)
-        # eng_tokens = [token.strip() for token in treebanktokenizer.tokenize(words) if (token.strip()).isalpha() == True]
-        khiii_tokens = khaiii_api_tokenizer(khaiii_api, words)
-        
-        ###########################################
-        ###########################################
-        # tokens = kor_tokens + eng_tokens + khiii_tokens + kkma_tokens
-        tokens = kor_tokens + khiii_tokens + kkma_tokens + words_no_hangul
-        
-        # print(kor_tokens., eng_tokens, khiii_tokens)
-        # print("@@@", len(kor_tokens), len(eng_tokens), len(tokens))
-        # return
+        kor_tokens = okt_tokenizer(_sent)
+        khiii_tokens = khaiii_api_tokenizer(khaiii_api, _sent)
+        kkma_tokens = kkma_tokenizer(_sent)
+        words_no_hangul = get_no_hangul(_sent)
 
-        words = [w.strip() for w in tokens]
-        words = [w for w in words
-                 if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
+        tokens = kor_tokens + khiii_tokens + kkma_tokens + words_no_hangul
+        tokens = [w.strip() for w in tokens]
+        tokens = [w for w in tokens
+                 if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]    
         
-        ###########################################
-        ###########################################
-        for key in key_freq_dict:
-            words+=[key]*key_freq_dict[key]
+        key_freq_dict = cate_counter(sent)
+        for k, v in key_freq_dict.items():
+            tokens+=[k]*v
         
-        img_feat = h['img_feat'][i]
-        
-        if not words:
+        if not tokens:
             return [None] * 2
+        img_feat = h['img_feat'][i]
 
         hash_func = hash if six.PY2 else lambda x: mmh3.hash(x, seed=17)
-        x = [hash_func(w) % opt.unigram_hash_size + 1 for w in words]
+        x = [hash_func(w) % opt.unigram_hash_size + 1 for w in tokens]
         xv = Counter(x).most_common(opt.max_len)
 
         x = np.zeros(opt.max_len, dtype=np.float32)
@@ -343,15 +239,13 @@ class Data:
         for i in range(len(xv)):
             x[i] = xv[i][0]
             v[i] = xv[i][1]
-        return Y, (x, v, img_feat, price, updttm)
+        return Y, (x, v, img_feat)
 
     def create_dataset(self, g, size, num_classes):
         shape = (size, opt.max_len)
         g.create_dataset('uni', shape, chunks=True, dtype=np.int32)
         g.create_dataset('w_uni', shape, chunks=True, dtype=np.float32)
-        g.create_dataset('img_feat', (size, 2048), chunks=True, dtype=np.float32)
-        g.create_dataset('price', (size, 1), chunks=True, dtype=np.int64)
-        g.create_dataset('updttm', (size, 1), chunks=True, dtype=np.int64)
+        g.create_dataset('img_feat', (size, opt.img_size), chunks=True, dtype=np.float32)
         g.create_dataset('cate', (size, num_classes), chunks=True, dtype=np.int32)
         g.create_dataset('pid', (size,), chunks=True, dtype='S12')
 
@@ -360,9 +254,7 @@ class Data:
         chunk = {}
         chunk['uni'] = np.zeros(shape=chunk_shape, dtype=np.int32)
         chunk['w_uni'] = np.zeros(shape=chunk_shape, dtype=np.float32)
-        chunk['img_feat'] = np.zeros(shape=(chunk_size, 2048), dtype=np.float32)
-        chunk['price'] = np.zeros(shape=(chunk_size, 1), dtype=np.int64)
-        chunk['updttm'] = np.zeros(shape=(chunk_size, 1), dtype=np.int64)
+        chunk['img_feat'] = np.zeros(shape=(chunk_size, opt.img_size), dtype=np.float32)
         chunk['cate'] = np.zeros(shape=(chunk_size, num_classes), dtype=np.int32)
         chunk['pid'] = []
         chunk['num'] = 0
@@ -373,10 +265,7 @@ class Data:
         dataset['uni'][offset:offset + num, :] = chunk['uni'][:num]
         dataset['w_uni'][offset:offset + num, :] = chunk['w_uni'][:num]
         dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
-        dataset['price'][offset:offset + num, :] = chunk['price'][:num]
-        dataset['updttm'][offset:offset + num, :] = chunk['updttm'][:num]
         dataset['cate'][offset:offset + num] = chunk['cate'][:num]
-        # if with_pid_field:
         dataset['pid'][offset:offset + num] = chunk['pid'][:num]
 
     def copy_bulk(self, A, B, offset, y_offset, with_pid_field=True):
@@ -385,10 +274,7 @@ class Data:
         A['uni'][offset:offset + num, :] = B['uni'][:num]
         A['w_uni'][offset:offset + num, :] = B['w_uni'][:num]
         A['img_feat'][offset:offset + num, :] = B['img_feat'][:num]
-        A['price'][offset:offset + num, :] = B['price'][:num]
-        A['updttm'][offset:offset + num, :] = B['updttm'][:num]
         A['cate'][offset:offset + num, y_offset:y_offset + y_num] = B['cate'][:num]
-        # if with_pid_field:
         A['pid'][offset:offset + num] = B['pid'][:num]
 
     def get_train_indices(self, size, train_ratio):
@@ -460,7 +346,7 @@ class Data:
             for data_idx, (pid, y, vw) in data:
                 if y is None:
                     continue
-                v, w, img_feat, price, updttm = vw
+                v, w, img_feat = vw
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
@@ -473,23 +359,18 @@ class Data:
                 c['uni'][idx] = v
                 c['w_uni'][idx] = w
                 c['img_feat'][idx] = img_feat
-                c['price'][idx] = price
-                c['updttm'][idx] = updttm
                 c['cate'][idx] = y
                 c['num'] += 1
-                # if not is_train:
                 c['pid'].append(np.string_(pid))
                 for t in ['train', 'dev']:
                     if chunk[t]['num'] >= chunk_size:
                         self.copy_chunk(dataset[t], chunk[t], num_samples[t], True)
-#                                         with_pid_field=t == 'dev')
                         num_samples[t] += chunk[t]['num']
                         chunk[t] = self.init_chunk(chunk_size, len(self.y_vocab))
             sample_idx += len(data)
         for t in ['train', 'dev']:
             if chunk[t]['num'] > 0:
                 self.copy_chunk(dataset[t], chunk[t], num_samples[t], True)
-#                                 with_pid_field=t == 'dev')
                 num_samples[t] += chunk[t]['num']
 
         for div in ['train', 'dev']:
@@ -498,11 +379,8 @@ class Data:
             shape = (size, opt.max_len)
             ds['uni'].resize(shape)
             ds['w_uni'].resize(shape)
-            ds['img_feat'].resize((size, 2048))
-            ds['price'].resize((size, 1))
-            ds['updttm'].resize((size, 1))
+            ds['img_feat'].resize((size, opt.img_size))
             ds['cate'].resize((size, len(self.y_vocab)))
-            # ds['pid'].resize((size, 1)) ####################################################
 
         data_fout.close()
         meta = {'y_vocab': self.y_vocab}

@@ -1,12 +1,17 @@
-from konlpy.tag import Kkma
-import pandas as pd
-import json
-import numpy as np
+# 
+# gen_cate_keyword.py
+# ==============================================================================
 import re
 import pickle
+import json
 
-cateid_kr = pd.DataFrame(json.load(open("../cate1.json", "rb")))
-print(cateid_kr.shape)
+import pandas as pd
+import numpy as np
+
+from konlpy.tag import Kkma
+
+from utils_class import cate1
+
 
 def splitter(sent):
     out = []
@@ -17,6 +22,7 @@ def splitter(sent):
     return out
 
 man_cate_names = []
+cateid_kr = pd.DataFrame(cate1)
 for cateid in cateid_kr.index:
     for cate_name in splitter(cateid):
         man_cate_names.append(cate_name)
@@ -51,5 +57,5 @@ fin_cate_names = new_cate_names
 
 print('Saving...')
 # Save
-with open('data/final_cate_names.pickle', 'wb') as handle:
-    pickle.dump(fin_cate_names, handle, protocol=pickle.HIGHEST_PROTOCOL)
+with open('data/final_cate_names.pickle', 'wb') as f:
+    pickle.dump(fin_cate_names, f)
