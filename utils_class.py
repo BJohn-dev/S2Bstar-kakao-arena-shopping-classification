@@ -10,7 +10,9 @@ from abc import ABC, abstractmethod
 import h5py
 import numpy as np
 import six
+import tqdm
 
+from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 from six.moves import cPickle
 
