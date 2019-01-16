@@ -40,7 +40,17 @@ $ python3 apply_embd.py test
 $ python3 inference.py test    
 
 
-## Leaderboards
+## :whale: 미리 생성된 모델을 바탕으로 test 데이터 예측 진행하기
+#### 0. 미리 생성된 모델 리소스 다운
+> $ wget https://www.dropbox.com/s/z8cr91uey32fyta/tools_map.pkl?dl=0 -O post_processing_model/tools_map.pkl  
+$ wget https://www.dropbox.com/s/ltpeeoga0wo5295/weights-13epoch?dl=0 -O embedding_model/weights . 
+$ wget https://www.dropbox.com/s/kuhxfkn2rsfkj8l/ml_psm_data.pickle?dl=0 -O post_processing_model/ml_psm_data.pickle  
+$ wget https://www.dropbox.com/s/np82vh1dp0hedfj/ml_pds_data.pickle?dl=0 -O post_processing_model/ml_pds_data.pickle  
+$ mkdir model/train  
+$ wget https://www.dropbox.com/s/54p2rh83tvudqw0/weights?dl=0 -O model/train/weights  
+
+
+## :whale: Leaderboards
 **팀명: S2Bstar** (잠정 순위 3위, TEST Score 기준)  
 
 **TEST Score** (2019.01.12)
