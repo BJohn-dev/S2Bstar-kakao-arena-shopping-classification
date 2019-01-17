@@ -45,7 +45,7 @@ $ python3 inference.py test
 > $ wget https://www.dropbox.com/s/z8cr91uey32fyta/tools_map.pkl?dl=0 -O post_processing_model/tools_map.pkl  
 $ wget https://www.dropbox.com/s/rbfkqypwe724uq7/final_cate_names.pickle?dl=0 data/final_cate_names.pickle   
 $ wget https://www.dropbox.com/s/95zl2g1244kq73x/y_vocab.py3.cPickle?dl=0 data/y_vocab.py3.cPickle   
-$ mkdir embedding_model/train/weights  
+$ mkdir embedding_model/train
 $ wget https://www.dropbox.com/s/ltpeeoga0wo5295/weights-13epoch?dl=0 -O embedding_model/train/weights   
 $ wget https://www.dropbox.com/s/kuhxfkn2rsfkj8l/ml_psm_data.pickle?dl=0 -O post_processing_model/ml_psm_data.pickle  
 $ wget https://www.dropbox.com/s/np82vh1dp0hedfj/ml_pds_data.pickle?dl=0 -O post_processing_model/ml_pds_data.pickle  
