@@ -43,8 +43,8 @@ $ python3 inference.py test
 ## :whale: 미리 생성된 모델을 바탕으로 test 데이터 예측 진행하기
 #### 0. 미리 생성된 모델 리소스를 다운 받고, TEST 데이터셋 생성
 > $ wget https://www.dropbox.com/s/z8cr91uey32fyta/tools_map.pkl?dl=0 -O post_processing_model/tools_map.pkl  
-$ wget https://www.dropbox.com/s/rbfkqypwe724uq7/final_cate_names.pickle?dl=0 data/final_cate_names.pickle   
-$ wget https://www.dropbox.com/s/95zl2g1244kq73x/y_vocab.py3.cPickle?dl=0 data/y_vocab.py3.cPickle   
+$ wget https://www.dropbox.com/s/rbfkqypwe724uq7/final_cate_names.pickle?dl=0 -O data/final_cate_names.pickle   
+$ wget https://www.dropbox.com/s/95zl2g1244kq73x/y_vocab.py3.cPickle?dl=0 -O data/y_vocab.py3.cPickle   
 $ mkdir embedding_model/train  
 $ wget https://www.dropbox.com/s/ltpeeoga0wo5295/weights-13epoch?dl=0 -O embedding_model/train/weights   
 $ wget https://www.dropbox.com/s/kuhxfkn2rsfkj8l/ml_psm_data.pickle?dl=0 -O post_processing_model/ml_psm_data.pickle  
